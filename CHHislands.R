@@ -1,7 +1,8 @@
 #max print has to be changed for this to work, since to file contains many rows. I just made it arbitrarily huge
 options(max.print=999999999)
-library(tidyverse)
 library(plyr)
+library(dplyr)
+library(readr)
 
 #reads data (list of all CHH positions) into a df
 CHH <- read.table("CHH_pos.txt", header = FALSE) 
@@ -54,31 +55,99 @@ genes$beforewindow <- genes$start - 2000
 genes$afterwindows <- genes$stop + 2000
 
 #make a function to determine whether each island is proximal to gene
-getValue <- function(x, data) {
+getValue1 <- function(x, data) {
   tmp <- data %>%
     dplyr::filter(beforewindow <= x, x <= start) %>%
     filter(row_number() == 1)
   return(tmp$genenumber)
 }
 
-testydata <- c(40000, 44280, 48900)
-test <- sapply(testydata, getValue, data=genes)
+getValue2 <- function(x, data) {
+  tmp <- data %>%
+    dplyr::filter(afterwindows >= x, x >= stop) %>%
+    filter(row_number() == 1)
+  return(tmp$genenumber)
+}
+
+#testydata <- c(40000, 44280, 48900)
+#test <- sapply(testydata, getValue, data=genes)
 
 #beforegene <- sapply(CHHislands$startpos, getValue, data=genes)
-CHHislands$beforegene <- sapply(CHHislands$startpos, getValue, data=genes) 
-CHHislands$beforegene <- gsub("integer(0)", "0", CHHislands$beforegene)
+CHHislands$beforegene <- sapply(CHHislands$startpos, getValue1, data=genes) 
+CHHislands$aftergene <- sapply(CHHislands$startpos, getValue2, data=genes)
+#CHHislands$beforegene <- gsub("integer(0)", "0", CHHislands$beforegene)
 
 #CHHislands1 <- grep("[[:digit:]]", CHHislands$beforegene)
 
-geneswithislands <- unique(CHHislands$beforegene) %>% grep("1","2","3","4","5","6","7","8","9")
-
+CHHislands$beforegene <- as.numeric(CHHislands$beforegene)
+CHHislands$aftergene <- as.numeric(CHHislands$aftergene)
+#geneswithislands <- unique(CHHislands$beforegene) %>% grep("1","2","3","4","5","6","7","8","9")
+#geneswithislands <- grep()
 
 #create 1000 random permutations of methylated positions
-permutations <- replicate(1000, sample(matched$mCHH))
 
+
+
+
+permutations <- replicate(10, sample(matched$mCHH))
+permutationstest <- replicate(10, sample(matched$mCHH), simplify = FALSE)
+permutations <- cbind(CHHvec, permutations)
+permutations1 <- t(permutations)
+test <- apply(1, )
+
+test <- numeric(length = length(permutationstest))
+test <- as.list(test)
+#for ( i in seq_along(permutationstest)) {
+#  test[i] <- tail(permutationstest[i])
+#}
+#head(test)
+
+
+permutationstest1 <- Map(cbind, list(CHHvec), permutationstest)
+permutationstest1 <- Map(as.data.frame, permutationstest1)
+#permutationstest2 <- Map(as.numeric, )
+PMTmCHH <- lapply(permutationstest1, subset, V2 == 1)
+#PMTmCHHvec <- lapply(PMTmCHH, subset, select = V1)
+PMTmCHHvec <- lapply(PMTmCHH, dplyr::pull, var = V1)
+#PMTmCHHvec <- lapply(PMTmCHHvec, as.vector, mode = "any")
+#PMTmCHHvec <- lapply(PMTmCHHvec, as.numeric)
+PMTmfreq <- lapply(PMTmCHHvec, hist, breaks = br, include.lowest = TRUE, plot = FALSE)
+#PMTmfreq1 <- lapply(PMTmfreq, getElement, counts)
+PMTcountslist <- list()
+for ( i in c(1:length(PMTmfreq))){
+  PMTcountslist[[i]] <- PMTmfreq[[i]]$counts
+}
+PMTmatched <- Map(cbind, list(freq$counts), PMTcountslist)
+PMTmatched <- Map(as.data.frame, PMTmatched)
+PMTmatched1 <- lapply(PMTmatched, subset, V1 > 5)
+PMTpercent <- 
+
+PMTpercent <- list()
+for ( i in c(1:length(PMTmatched1))){
+  PMTpercent[[i]] <- PMTmatched1[[i]]$V2/PMTmatched1[[i]]$V1
+}
+
+PMTmfreq.combined <- unlist(PMTpercent)
+PMTmfreq.sorted <- sort(PMTmfreq.combined, decreasing = TRUE) 
+#Bernie <- head(PMTmfreq.sorted, n = 
+
+
+#https://stackoverflow.com/questions/1563961/how-to-find-top-n-of-records-in-a-column-of-a-dataframe-using-r
+#subset(data, V2 > quantile(V2, prob = 1 - n/100))
+Bernie <- quantile(PMTmfreq.sorted, prob = .99)
+
+#permout <- seq(1, 10)
+#permout <- as.data.frame(permout)
+#test <- seq(2, ncol(permutations))
+
+#for ( i in seq(2, ncol(permutations)) ){
+#  test[[i]] <- head(permutations[, i])
+#}
 
 #
 # Code graveyard (nothing beyond here matters)
+
+#permutationstest1 <- lapply(permutationstest, cbind(CHHvec, permutationstest[c(1:length(permutationstest))])
 
 #https://stackoverflow.com/questions/24766104/checking-if-value-in-vector-is-in-range-of-values-in-different-length-vector#
 #getValue <- function(x, data) {
@@ -146,5 +215,3 @@ permutations <- replicate(1000, sample(matched$mCHH))
 #permutations <- replicate(1000, sample(matched$mCHH))
 
 #beforegene <- sapply(CHHislands$startpos, getValue, data=genes)
-
-
